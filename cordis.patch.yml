@@ -1,0 +1,17 @@
+# dsh-system-view bundle patch: mount the System conversation view.
+#
+# The bundle is dual-face:
+#   - Node half (`./index.js`): inert placeholder; every capability lives on
+#     the browser side, so the host layer stays unchanged.
+#   - Client half (`./client.js`, discovered through the `dsh.client`
+#     declaration in package.json): registers a `conversation.view` entry
+#     (tab id "system"), two Conversation event Definitions over the
+#     "systemView" target, and a `uiSession` standard hook that feeds the
+#     tab component.
+#
+# All presented data is derived from durable session events (`system/message`
+# and `request/header`), so the view respects the model-visible <=> log-
+# reconstructable rule: nothing here adds content to any model request.
+- insert:
+    - id: system-view
+      name: 'dsh-system-view'

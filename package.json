@@ -1,0 +1,47 @@
+{
+  "name": "dsh-system-view",
+  "version": "0.1.0",
+  "description": "Adds a System tab beside Chat and Trajectory in the DSH conversation area, showing the effective system prompt, the exact tool list of the current request, available skills, request config, and their change history — everything reconstructed from session events.",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./locale/*.json": "./locale/*.json",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/en.json",
+    "locale/zh.json",
+    "icon.svg",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "system-prompt",
+    "tools",
+    "skills",
+    "context-inspection"
+  ],
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "license": "MIT",
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.2"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
+    }
+  }
+}
