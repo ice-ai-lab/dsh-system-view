@@ -189,15 +189,20 @@ window.__ModuleLoader__.load({
 		 * system-message / request-header event).
 		 */
 		function createSystemViewBuilder() {
+			/** Latest immutable fold; incremental applications upsert into it. */
+			let current = EMPTY_SNAPSHOT;
 			return {
 				empty: EMPTY_SNAPSHOT,
 				/** @param {{ nodes: ReadonlyArray<{ seq: number, data: object }> }} input complete node set. */
 				replace(input) {
-					return fold(input.nodes);
+					current = fold(input.nodes ?? []);
+					return current;
 				},
-				/** @param {{ upserts: ReadonlyArray<{ seq: number, data: object }>, nodes: ReadonlyArray<{ seq: number, data: object }> }} input. */
+				/** @param {{ upserts: ReadonlyArray<{ seq: number, data: object }> }} input changed nodes since the last build. */
 				apply(input) {
-					return fold(input.nodes);
+					const nodes = [...current.rawNodes ?? [], ...(input?.upserts ?? [])];
+					current = fold(nodes);
+					return current;
 				},
 			};
 		}
@@ -211,6 +216,7 @@ window.__ModuleLoader__.load({
 			let prompt = "";
 			let promptTime = 0;
 			let promptUpdate = false;
+			let skillRaw = "";
 			let contextWindow = null;
 			let request = null;
 			for (const node of nodes ?? []) {
@@ -220,13 +226,19 @@ window.__ModuleLoader__.load({
 					prompt = typeof data.text === "string" ? data.text : "";
 					promptTime = typeof data.time === "number" ? data.time : 0;
 					promptUpdate = data.update === true;
+				} else if (data.kind === "skills") {
+					skillRaw = typeof data.raw === "string" ? data.raw : "";
 				} else if (data.kind === "request-context") {
 					contextWindow = typeof data.contextWindow === "number" ? data.contextWindow : null;
 				} else if (data.kind === "request") {
 					request = data;
 				}
 			}
+			const sorted = (nodes ?? []).slice().sort((a, b) => (a?.anchorSeq ?? 0) - (b?.anchorSeq ?? 0));
+			const skillSource = skillRaw !== "" ? skillRaw : prompt;
+			const skills = parseSkills(skillSource);
 			return {
+				rawNodes: sorted,
 				ready: request !== null || prompt !== "",
 				prompt,
 				promptTime,
@@ -237,7 +249,7 @@ window.__ModuleLoader__.load({
 				config: request?.config ?? null,
 				adapterDefaults: request?.adapterDefaults ?? null,
 				contextWindow,
-				skills: parseSkills(prompt),
+				skills,
 				toolCount: request !== null && Array.isArray(request.tools) ? request.tools.length : 0,
 			};
 		}
@@ -369,6 +381,39 @@ window.__ModuleLoader__.load({
 						kind: "request-context",
 						contextWindow: state.contextWindow,
 					});
+				},
+			};
+		}
+
+		/**
+		 * Skill-catalog Definition: adopts the latest `user/message` carrying an
+		 * `<available_skills>` block. The catalog is a durable user-role message
+		 * (see `@deepseek-ai/dsh-tool-skill`), not part of the system prompt, so
+		 * the Skills page needs its own scan.
+		 */
+		function skillCatalogDefinition() {
+			return {
+				kind: "systemview-skill-catalog",
+				target: TARGET,
+				match: (event) => event.type === "user/message" ? { id: String(event.seq), role: "start" } : null,
+				start: (_context, match) => {
+					const text = match.event.data?.content
+						?.filter((block) => block?.type === "text")
+						.map((block) => block.text ?? "")
+						.join("\n") ?? "";
+					return { raw: text, seq: match.event.seq };
+				},
+				update: (context, match) => {
+					const text = match.event.data?.content
+						?.filter((block) => block?.type === "text")
+						.map((block) => block.text ?? "")
+						.join("\n") ?? "";
+					return text.includes("<available_skills>") ? { raw: text, seq: match.event.seq } : context.state;
+				},
+				buildViewNode: (context) => {
+					const state = context.state;
+					if (state === undefined || !state.raw?.includes("<available_skills>")) return null;
+					return systemViewNode(context, state.seq, { kind: "skills", raw: state.raw });
 				},
 			};
 		}
@@ -734,6 +779,7 @@ window.__ModuleLoader__.load({
 			ctx.uiConversation.events.register(requestHeaderDefinition(
 				(previous, event, system) => ctx.uiConversation.inspectRequestPrompt(previous, event, system)));
 			ctx.uiConversation.events.register(requestContextDefinition());
+			ctx.uiConversation.events.register(skillCatalogDefinition());
 
 			// The target's snapshot builder.
 			ctx.uiConversation.views.register({
