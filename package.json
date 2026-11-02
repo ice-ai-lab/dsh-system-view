@@ -30,9 +30,19 @@
     "context-inspection"
   ],
   "engines": {
-    "node": ">=22.18.0"
+    "node": ">=22.18.0",
+    "dsh": ">=0.2.0 <0.3.0"
   },
   "license": "MIT",
+  "homepage": "https://github.com/ice-ai-lab/dsh-system-view#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ice-ai-lab/dsh-system-view.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ice-ai-lab/dsh-system-view/issues"
+  },
+  "icon": "./icon.svg",
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.2"
   },

@@ -1,5 +1,6 @@
 {
   "meta": {
+    "title": "系统视图",
     "description": "在对话与轨迹旁新增一个系统 Tab，展示当前生效的系统提示词、请求工具与可用 Skills。"
   },
   "view.system": "系统",

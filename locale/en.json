@@ -1,5 +1,6 @@
 {
   "meta": {
+    "title": "System view",
     "description": "Adds a System tab beside Chat and Trajectory showing the effective system prompt, request tools, and available skills."
   },
   "view.system": "System",
